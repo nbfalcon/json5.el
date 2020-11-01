@@ -134,9 +134,9 @@ is not a number, yield nil."
 
 ;;; core conversion function
 (defun json5-to-json (json5)
-  "Convert string JSON5 to normal JSON.
-Removes all comments, converts whitespace, .... Tries to be as
-conservative as possible, only changing what is necessary."
+  "Convert the string JSON5 to normal JSON.
+Removes all comments, converts whitespace, .... Note that
+Infinity and NaN are not removed, so will probably cause issues."
   (replace-regexp-in-string
    (rx (or
         ;; handle whitespace and comments
