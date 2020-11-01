@@ -175,6 +175,8 @@ Infinity and NaN are not removed, so will probably cause issues."
   "Parse JSON5 string S.
 This function uses `json-read-from-string' internally, so
 json.el's globals may be overridden to change types."
+  (require 'json)
+  (declare-function json-read-from-string "json" (s))
   (json-read-from-string (json5-to-json s)))
 
 (defun json5--buffer-contents ()
