@@ -5,7 +5,7 @@
 ;; Author: Nikita Bloshchanevich <nikblos@outlook.com>
 ;; URL: https://github.com/nbfalcon/json5.el
 ;; Package-Requires: ((emacs "25.1"))
-;; Version: 0.1.0
+;; Version: 0.2.0
 
 ;;; Commentary:
 ;; Emacs Lisp library to handle JSON5. Handles parsing and conversion to normal
@@ -52,8 +52,7 @@ Corresponds to ECMAScript's LineTerminator Sequence.")
           (: "//" (* nonl) eol)
           (: "/*" (* (or (not (any ?*))
                          (: (+ ?*) (not (any ?/))))) (+ ?*) ?/)))
-  "Matches JSON5 whitespace.
-Includes comments.")
+  "Matches a single JSON5 whitespace, including comments.")
 
 ;;; helper functions
 (defun json5--reescape (s)
@@ -79,16 +78,17 @@ Currently, this means transforming \"\\xAB.\" to the equivalent
    s nil t))
 
 (defun json5--keyword-p (kw)
-  "Check if KW is a built-in JSON5 keyword."
-  (member kw
-          '(;; JSON5 supports Infinity and NaN, but JSON itself doesn't, so most
-            ;; JSON parsers don't (neither json.el nor json.c can parse it, but
-            ;; Python's can). Keep it in, letting the actual JSON parser choke
-            ;; on the invalid input if it doesn't support it.
-            "Infinity" "NaN"
-            "+Infinity" "-Infinity"
-            ;; keywords shouldn't be turned to strings
-            "true" "false" "null")))
+  "Check if KW is a JSON (not JSON5) keyword."
+  (member kw '("true" "false" "null")))
+
+(defun json5--numkw-p (kw)
+  "Check if KW is a JSON5 number keyword invalid in JSON.
+This means checking for Infinity, NaN, ...."
+  ;; JSON5 supports Infinity and NaN, but JSON itself doesn't, so most JSON
+  ;; parsers don't (neither json.el nor json.c can parse it, but Python's can).
+  ;; Keep it in, letting the actual JSON parser choke on the invalid input if it
+  ;; doesn't support it.
+  (member kw '("Infinity" "+Infinity" "-Infinity" "NaN")))
 
 (defun json5--parse-number-lit (kw)
   "Parse number literal KW.
@@ -133,10 +133,13 @@ is not a number, yield nil."
 ;;       (if (= num truncated-num) truncated-num num))))
 
 ;;; core conversion function
-(defun json5-to-json (json5)
+(defun json5-to-json (json5 &optional keep-numkw)
   "Convert the string JSON5 to normal JSON.
-Removes all comments, converts whitespace, .... Note that
-Infinity and NaN are not removed, so will probably cause issues."
+Removes all comments, converts whitespace, ....
+
+By default, `json5--numkw-p' keywords are converted to \"null\",
+yielding valid JSON. To override this behaviour, specify a truthy
+value for KEEP-NUMKW."
   (replace-regexp-in-string
    (rx (or
         ;; handle whitespace and comments
@@ -158,17 +161,20 @@ Infinity and NaN are not removed, so will probably cause issues."
        (or (and whitespace " ")
            comma-tail
 
+           ;; Infinity, NaN... -> null?
+           (when (and keyword-literal (json5--numkw-p keyword-literal))
+             (if keep-numkw keyword-literal "null"))
+           (and keyword-literal (json5--keyword-p keyword-literal)
+                keyword-literal)
            (and keyword-literal
                 (when-let ((num (json5--parse-number-lit keyword-literal)))
                   (number-to-string num)))
-           (and keyword-literal (json5--keyword-p keyword-literal)
-                keyword-literal)
 
            ;; all matches must capture, so it must be either a string or basic
            ;; keyword literal.
            (format "\"%s\""
                    (json5--reescape (or string-literal keyword-literal))))))
-   json5 nil t))
+   json5 t t))
 
 ;;; convenience functions
 (defun json5-parse-string (s)

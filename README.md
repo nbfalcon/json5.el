@@ -24,14 +24,8 @@ and NaN are rare in configuration files, though).
 # Test suite
 
 There is an `ert-runner` based test-suite that leverages the [official JSON5
-test suite](https://github.com/json5/json5-tests). Currently, not all tests pass
-for the following reasons:
-
-- Decimals ending in 0 get converted to integers by Node, but not by this
-  library, so there are many failures like `(should (equal 5.0 5))`. Doing that
-  using `truncate` caused other failures due to loss of precision.
-- Infinity and NaN aren't handled by json.el
-- Duplicate entries aren't removed
+test suite](https://github.com/json5/json5-tests). Currently, the duplicate
+object test doesn't pass.
 
 To run it, the `json5` npm package has to be installed and in the PATH. Then, it
 can be run using `cask exec ert-runner` as usual (after `cask install`).

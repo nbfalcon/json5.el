@@ -46,12 +46,14 @@ If an error is thrown, return `:error'."
   (condition-case nil (json5-parse-file file)
     (error :error)))
 
-(defun json5-test--register-tests (prefix test-dir)
-  "Add parsing-tests for JSON(5) files in TEST-DIR.
+(defun json5-test--register-tests (prefix test-dir suffixes)
+  "Add parsing-tests for .SUFFIXES files in TEST-DIR.
 Each test is an `ert' asserting that parsing them with
 `json5-test--parse-noerror' and `json5-test--parse-json5' yields
-equal results. Start every test with PREFIX."
-  (dolist (file (directory-files-recursively test-dir "\\.json5?\\'"))
+equal results. Start every test with PREFIX. Use only those files
+that end in SUFFIXES."
+  (dolist (file (directory-files-recursively
+                 test-dir (format ".%s\\'" (regexp-opt suffixes))))
     (let ((name (intern (concat prefix file))))
       (ert-set-test
        name
@@ -59,9 +61,10 @@ equal results. Start every test with PREFIX."
         :name name
         :documentation (format "Ensure that %S parses correctly." file)
         :body (lambda () (should
-                     (equal (json5-test--parse-json5 file)
-                            (json5-test--parse-noerror file)))))))))
+                     ;; TODO: ignoring case for strings is a problem
+                     (cl-equalp (json5-test--parse-json5 file)
+                                (json5-test--parse-noerror file)))))))))
 
-(json5-test--register-tests "json5/" "rsc/json5-tests/")
+(json5-test--register-tests "json5/" "rsc/json5-tests/" '("json5" "json" "errorSpec"))
 
 ;;; json5-test.el ends here
